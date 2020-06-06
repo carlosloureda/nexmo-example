@@ -1,8 +1,9 @@
 const { NEXMO_API_KEY, NEXMO_SECRET } = process.env;
-
+const fs = require("fs");
 // TODO: add this to .env
-const APPLICATION_ID = "accf1462-2c94-432f-9565-0258fddc1368";
-
+const APPLICATION_ID = "306ee0db-9244-4de2-a149-efc50e5fcecd";
+//   TODO: also add private key to some places ...
+const PRIVATE_KEY_PATH = "./private.key";
 class NexmoAPI {
   constructor() {
     const Nexmo = require("nexmo");
@@ -10,8 +11,7 @@ class NexmoAPI {
       apiKey: NEXMO_API_KEY,
       apiSecret: NEXMO_SECRET,
       applicationId: APPLICATION_ID,
-      //   TODO: also add private key to some places ...
-      privateKey: "./private.key",
+      privateKey: PRIVATE_KEY_PATH,
     });
   }
 
@@ -58,6 +58,7 @@ class NexmoAPI {
         });
         resolve(id);
       } catch (error) {
+        console.log("---> ", error);
         reject(error);
       }
     });
@@ -99,6 +100,147 @@ class NexmoAPI {
         reject(error);
       }
     });
+  };
+
+  //FIX: Broken
+  listUsers = async () => {
+    return new Promise((resolve, reject) => {
+      this.nexmo.users.get({}, (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+
+  getUser = (id) => {
+    return new Promise((resolve, reject) => {
+      this.nexmo.users.get(id, (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+
+  //FIX: Broken
+  getUserId = async (userName) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const users = await this.listUsers();
+        console.log("¡¡¡¡¡¡ users: ", users);
+        let id = "";
+        // TODO: refactor
+        Object.values(users).map((user) => {
+          if (user.name === userName) {
+            id = user.id;
+          }
+        });
+        resolve(id);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+
+  createUser = (name, display_name, image_url) => {
+    return new Promise((resolve, reject) => {
+      // let userId = await this.getUserId(name);
+      // console.log("**** userId: ", userId);
+      // if (userId) {
+      //   resolve(userId);
+      //   return;
+      // }
+      this.nexmo.users.create(
+        { name, display_name, image_url },
+        (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+    });
+  };
+
+  createMember = (conversationId, userId) => {
+    return new Promise((resolve, reject) => {
+      this.nexmo.conversations.members.create(
+        conversationId,
+        { action: "join", user_id: userId, channel: { type: "app" } },
+        (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+    });
+  };
+
+  createUserToken = (userName) => {
+    const aclPaths = {
+      paths: {
+        "/*/users/**": {},
+        "/*/conversations/**": {},
+        "/*/sessions/**": {},
+        "/*/devices/**": {},
+        "/*/image/**": {},
+        "/*/media/**": {},
+        "/*/applications/**": {},
+        "/*/push/**": {},
+        "/*/knocking/**": {},
+      },
+    };
+    const privateKEY = fs.readFileSync(PRIVATE_KEY_PATH);
+    console.log("----> userName: ", userName);
+    return this.createMyOwnJwt(userName);
+    return this.nexmo.generateJwt(privateKEY, {
+      application_id: APPLICATION_ID,
+      sub: userName,
+      //expire in 24 hours
+      exp: Math.round(new Date().getTime() / 1000) + 86400,
+      acl: aclPaths,
+    });
+  };
+
+  createMyOwnJwt = (userName) => {
+    const { uuid } = require("uuidv4");
+
+    const now = Math.floor(new Date().getTime() / 1000); // seconds since epoch
+    const exp = now + 86400;
+
+    const claims = {
+      application_id: APPLICATION_ID,
+      iat: now,
+      sub: userName,
+      exp: exp,
+      jti: uuid(),
+      acl: {
+        paths: {
+          "/*/users/**": {},
+          "/*/conversations/**": {},
+          "/*/sessions/**": {},
+          "/*/devices/**": {},
+          "/*/image/**": {},
+          "/*/media/**": {},
+          "/*/applications/**": {},
+          "/*/push/**": {},
+          "/*/knocking/**": {},
+        },
+      },
+    };
+
+    const jwt = require("jsonwebtoken");
+    const privateKEY = fs.readFileSync(PRIVATE_KEY_PATH);
+    var token = jwt.sign(claims, privateKEY, { algorithm: "RS256" });
+    return token;
   };
 }
 
@@ -158,35 +300,3 @@ module.exports = NexmoAPI;
 // };
 
 // Obsolete
-// const createMyOwnJwt = () => {
-//   const secureRandom = require("secure-random");
-//   const signingKey = secureRandom(256, { type: "Buffer" });
-
-//   const njwt = require("njwt");
-
-//   const now = Math.floor(new Date().getTime() / 1000); // seconds since epoch
-//   const plus5Minutes = new Date((now + 5 * 60) * 1000); // Date object
-
-//   const claims = {
-//     application_id: applicationId,
-//     iat: now(),
-//     jti: signingKey.toString("base64"),
-//   };
-
-//   let token = njwt
-//     .create(claims, privateKEY)
-//     // .setIssuedAt(now)
-//     // .setExpiration(plus5Minutes)
-//     // .setIssuer(clientId)
-//     // .setSubject(clientId)
-//     .compact();
-
-//   nJwt.verify(token, privateKEY, function (err, verifiedJwt) {
-//     if (err) {
-//       console.log("ERROR: ", err); // Token has expired, has been tampered with, etc
-//     } else {
-//       console.log("verified: ", verifiedJwt); // Will contain the header and body
-//     }
-//   });
-//   return token;
-// };

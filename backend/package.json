@@ -6,10 +6,13 @@
   "dependencies": {
     "dotenv": "^8.2.0",
     "fastify": "^2.14.1",
+    "fastify-cors": "^3.0.3",
     "jsonwebtoken": "^8.5.1",
     "nexmo": "^2.7.0-beta-1",
     "njwt": "^1.0.0",
     "node-fetch": "^2.6.0",
-    "secure-random": "^1.1.2"
+    "pino-pretty": "^4.0.0",
+    "secure-random": "^1.1.2",
+    "uuidv4": "^6.1.0"
   }
 }
