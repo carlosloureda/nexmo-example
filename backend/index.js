@@ -1,5 +1,10 @@
 // Require the framework and instantiate it
-const fastify = require("fastify")({ logger: true });
+const fastify = require("fastify")({
+  logger: {
+    prettyPrint: true,
+    level: "info",
+  },
+});
 const fetch = require("node-fetch");
 require("dotenv").config();
 
@@ -14,8 +19,11 @@ const publicKEY = fs.readFileSync("./public.key", "utf8");
 
 let supportConversationID = "";
 
-const SUPPORT_CONVERATION_NAME = "Support Conversation";
+const SUPPORT_CONVERATION_NAME = "SupportConversation";
 
+fastify.register(require("fastify-cors"), {
+  origin: true,
+});
 // Declare a route
 fastify.get("/", async (request, reply) => {
   return { hello: "world" };
@@ -37,16 +45,29 @@ fastify.post("/webhooks/status", { schema: null }, (req, reply) => {
 });
 
 // TODO: add authentication
-fastify.get("/support/conversation", { schema: null }, (req, reply) => {
-  reply.send({ conversationId: supportConversationID });
+fastify.post("/support/conversation", { schema: null }, async (req, reply) => {
+  //  create user on nexmo
+  // const { id: userId } = await nexmoAPI.createUser(req.body.username);
+
+  // // add user as member of conversation
+
+  // let res = await nexmoAPI.createMember(supportConversationID, userId);
+  // console.log("res: ", res);
+
+  let token = nexmoAPI.createUserToken(req.body.username);
+  console.log("token: ", token);
+  reply.send({
+    // userId,
+    // conversationId: supportConversationID,
+    token,
+  });
 });
 
 const NexmoAPI = require("./api/nexmo");
+nexmoAPI = new NexmoAPI();
 // createApplication()
 const init = async () => {
   // await getApplication(applicationId)
-
-  const nexmoAPI = new NexmoAPI();
 
   if (!supportConversationID) {
     try {
@@ -61,7 +82,7 @@ const init = async () => {
         );
         supportConversationID = result.id;
       }
-      console.log("supportConversationID: ", supportConversationID);
+      console.log("---> supportConversationID: ", supportConversationID);
     } catch (error) {
       console.log("Error: ", error);
     }

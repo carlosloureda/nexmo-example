@@ -18,3 +18,10 @@
 - Crear evento de soporte asigna chat
 
 - Ver si el server se conecta.
+
+* create app
+* create conversation
+* create user (before getting the token!)
+* añaadir usuario como miembro a la conversacion
+* crear token
+*
