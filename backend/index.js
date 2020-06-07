@@ -14,9 +14,6 @@ const authToken = new Buffer(`${NEXMO_API_KEY}:${NEXMO_SECRET}`).toString(
 );
 const fs = require("fs");
 
-const privateKEY = fs.readFileSync("./private.key");
-const publicKEY = fs.readFileSync("./public.key", "utf8");
-
 let supportConversationID = "";
 
 const SUPPORT_CONVERATION_NAME = "SupportConversation";
@@ -48,12 +45,15 @@ fastify.post("/webhooks/status", { schema: null }, (req, reply) => {
 fastify.post("/support/conversation", { schema: null }, async (req, reply) => {
   //  create user on nexmo
   // TODO: username needs to be the email (unique)
-  const { id: userId } = await nexmoAPI.createUser(req.body.username);
+  const { id: userId } = await nexmoAPI.createUser(
+    req.body.email,
+    req.body.username
+  );
 
   // // add user as member of conversation
   let res = await nexmoAPI.createMember(supportConversationID, userId);
 
-  let token = nexmoAPI.createUserToken(req.body.username);
+  let token = nexmoAPI.createUserToken(req.body.email);
   reply.send({
     userId,
     conversationId: supportConversationID,
@@ -97,7 +97,7 @@ init();
 // Run the server!
 const start = async () => {
   try {
-    await fastify.listen(3000);
+    await fastify.listen(8000);
     fastify.log.info(`server listening on ${fastify.server.address().port}`);
   } catch (err) {
     fastify.log.error(err);
