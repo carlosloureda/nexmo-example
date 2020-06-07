@@ -1,2 +1,0 @@
-{"level":30,"time":1591462513735,"pid":17126,"hostname":"ot-ie-wow.herokuapp.com","msg":"Server listening at http://127.0.0.1:3000","v":1}
-{"level":30,"time":1591462513736,"pid":17126,"hostname":"ot-ie-wow.herokuapp.com","msg":"server listening on 3000","v":1}
