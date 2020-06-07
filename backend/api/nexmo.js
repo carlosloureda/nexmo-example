@@ -1,9 +1,7 @@
-const { NEXMO_API_KEY, NEXMO_SECRET } = process.env;
+const { NEXMO_API_KEY, NEXMO_SECRET, APPLICATION_ID } = process.env;
 const fs = require("fs");
 const util = require("util");
 
-// TODO: add this to .env
-const APPLICATION_ID = "306ee0db-9244-4de2-a149-efc50e5fcecd";
 //   TODO: also add private key to some places ...
 const PRIVATE_KEY_PATH = "./private.key";
 
@@ -382,58 +380,3 @@ class NexmoAPI {
 }
 
 module.exports = NexmoAPI;
-
-// const token = Nexmo.generateJwt(privateKEY, {
-//   application_id: applicationId,
-//   // sub: "jamie",
-//   //expire in 24 hours
-//   exp: Math.round(new Date().getTime() / 1000) + 86400,
-//   // acl: aclPaths,
-// });
-
-// const token = nexmo.generateJwt();
-
-// try {
-//   console.log("Token: ", token);
-//   let response = await fetch("https://api.nexmo.com/beta/conversations", {
-//     method: "post",
-//     headers: {
-//       // "Content-Type": "application/json",
-//       Authorization: "Bearer " + token,
-//     },
-//     body: JSON.stringify({
-//       name: "supportConversation",
-//       display_name: "Support Conversation",
-//       capabilities: {
-//         messages: {
-//           webhooks: {
-//             inbound_url: {
-//               address: "http://localhost:3000/webhooks/inbound",
-//               http_method: "POST",
-//             },
-//             status_url: {
-//               address: "http://localhost:3000/webhooks/status",
-//               http_method: "POST",
-//             },
-//           },
-//         },
-//         rtc: {
-//           webhooks: {
-//             event_url: {
-//               address: "http://localhost:3000/webhooks/event",
-//               http_method: "POST",
-//             },
-//           },
-//         },
-//       },
-//     }),
-//   });
-//   let data = await response.json();
-//   console.log("data: ", data);
-//   console.log(`Conversation id: ${data.id} and link: ${data.href}`);
-// } catch (error) {
-//   console.log("Request failed", error);
-// }
-// };
-
-// Obsolete
