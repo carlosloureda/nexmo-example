@@ -47,18 +47,16 @@ fastify.post("/webhooks/status", { schema: null }, (req, reply) => {
 // TODO: add authentication
 fastify.post("/support/conversation", { schema: null }, async (req, reply) => {
   //  create user on nexmo
-  // const { id: userId } = await nexmoAPI.createUser(req.body.username);
+  // TODO: username needs to be the email (unique)
+  const { id: userId } = await nexmoAPI.createUser(req.body.username);
 
   // // add user as member of conversation
-
-  // let res = await nexmoAPI.createMember(supportConversationID, userId);
-  // console.log("res: ", res);
+  let res = await nexmoAPI.createMember(supportConversationID, userId);
 
   let token = nexmoAPI.createUserToken(req.body.username);
-  console.log("token: ", token);
   reply.send({
-    // userId,
-    // conversationId: supportConversationID,
+    userId,
+    conversationId: supportConversationID,
     token,
   });
 });
@@ -74,13 +72,13 @@ const init = async () => {
       supportConversationID = await nexmoAPI.getConversationId(
         SUPPORT_CONVERATION_NAME
       );
+      console.log("supportConversationID: ", supportConversationID);
 
       if (!supportConversationID) {
         let result = await nexmoAPI.createConversation(
           SUPPORT_CONVERATION_NAME,
           "support conversation"
         );
-        supportConversationID = result.id;
       }
       console.log("---> supportConversationID: ", supportConversationID);
     } catch (error) {

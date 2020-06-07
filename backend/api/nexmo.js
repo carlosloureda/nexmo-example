@@ -1,9 +1,16 @@
 const { NEXMO_API_KEY, NEXMO_SECRET } = process.env;
 const fs = require("fs");
+const util = require("util");
+
 // TODO: add this to .env
 const APPLICATION_ID = "306ee0db-9244-4de2-a149-efc50e5fcecd";
 //   TODO: also add private key to some places ...
 const PRIVATE_KEY_PATH = "./private.key";
+
+const NEXMO_ERROS = {
+  MEMBER_ALREADY_JOINED: "conversation:error:member-already-joined",
+  USER_DUPLICATED: "user:error:duplicate-name",
+};
 class NexmoAPI {
   constructor() {
     const Nexmo = require("nexmo");
@@ -15,7 +22,27 @@ class NexmoAPI {
     });
   }
 
+  _wrappInPromise = (_func, args) => {
+    console.log("_func: ", _func);
+    console.log("args: ", args);
+    return new Promise((resolve, reject) => {
+      _func(args, (error, result) => {
+        if (error) {
+          console.log("errror: ", error);
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+
   createConversation = async (name, display_name) => {
+    // let results = await this._wrappInPromise(this.nexmo.conversations.create, {
+    //   name,
+    //   display_name,
+    // });
+    // console.log("*** results: ", results);
     return new Promise((resolve, reject) => {
       this.nexmo.conversations.create(
         {
@@ -24,6 +51,8 @@ class NexmoAPI {
         },
         (error, result) => {
           if (error) {
+            console.log("error: ", error);
+
             reject(error);
           } else {
             resolve(result);
@@ -34,6 +63,14 @@ class NexmoAPI {
   };
 
   getConversation = async (conversationId) => {
+    // const get = util.promisify(this.nexmo.conversations.get);
+
+    // try {
+    //   let result = await get(conversationId);
+    //   return result;
+    // } catch (error) {
+    //   return error;
+    // }
     return new Promise((resolve, reject) => {
       this.nexmo.conversations.get(conversationId, (error, result) => {
         if (error) {
@@ -58,7 +95,6 @@ class NexmoAPI {
         });
         resolve(id);
       } catch (error) {
-        console.log("---> ", error);
         reject(error);
       }
     });
@@ -102,10 +138,20 @@ class NexmoAPI {
     });
   };
 
-  //FIX: Broken
   listUsers = async () => {
     return new Promise((resolve, reject) => {
-      this.nexmo.users.get({}, (error, result) => {
+      this.nexmo.users.get({ page_size: 10 }, (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+  getNextUsers = async (result) => {
+    return new Promise((resolve, reject) => {
+      this.nexmo.users.next(result, (error, result) => {
         if (error) {
           reject(error);
         } else {
@@ -132,7 +178,6 @@ class NexmoAPI {
     return new Promise(async (resolve, reject) => {
       try {
         const users = await this.listUsers();
-        console.log("¡¡¡¡¡¡ users: ", users);
         let id = "";
         // TODO: refactor
         Object.values(users).map((user) => {
@@ -147,16 +192,114 @@ class NexmoAPI {
     });
   };
 
-  createUser = (name, display_name, image_url) => {
+  // TODO: rename this to a more convenient name
+  createUser = async (name, display_name, image_url) => {
     return new Promise((resolve, reject) => {
-      // let userId = await this.getUserId(name);
-      // console.log("**** userId: ", userId);
-      // if (userId) {
-      //   resolve(userId);
-      //   return;
-      // }
       this.nexmo.users.create(
         { name, display_name, image_url },
+        async (error, result) => {
+          if (error) {
+            if (error.body && error.body.code === NEXMO_ERROS.USER_DUPLICATED) {
+              let resultUsers = await this.listUsers();
+              let users = resultUsers._embedded.data.users;
+              let matchingUsers = users.filter((user) => user.name === name);
+              let matchingUser = null;
+              if (matchingUsers && !matchingUsers.length) {
+                var promises = [];
+                matchingUser = matchingUsers[0];
+                while (!matchingUser) {
+                  try {
+                    let result = await this.getNextUsers(resultUsers);
+                    resultUsers = result;
+                    if (
+                      !resultUsers ||
+                      !resultUsers._embedded.data.users.length
+                    ) {
+                      resolve(null);
+                    }
+                    users = result._embedded.data.users;
+                    matchingUsers = users.filter((user) => user.name === name);
+                    if (matchingUsers && matchingUsers.length) {
+                      matchingUser = matchingUsers[0];
+                      resolve(matchingUser);
+                    }
+                  } catch (error) {
+                    reject(null);
+                  }
+                }
+              } else {
+                matchingUser = matchingUsers[0];
+                resolve(matchingUser);
+              }
+            } else {
+              resolve(result);
+            }
+          }
+        }
+      );
+    });
+  };
+
+  createMember = async (conversationId, userId) => {
+    return new Promise((resolve, reject) => {
+      this.nexmo.conversations.members.create(
+        conversationId,
+        { action: "join", user_id: userId, channel: { type: "app" } },
+        async (error, result) => {
+          if (error) {
+            if (
+              error.body &&
+              error.body.code === NEXMO_ERROS.MEMBER_ALREADY_JOINED
+            ) {
+              let resultMembers = await this.listMembers(conversationId);
+              let members = resultMembers._embedded.data.members;
+              let matchingMembers = members.filter(
+                (member) => member.user_id === userId
+              );
+              let matchingMember = matchingMembers[0];
+              if (matchingMember) {
+                resolve(matchingMember);
+              } else {
+                while (!matchingMember) {
+                  try {
+                    let result = await this.getNextUsers(resultMembers);
+                    resultMembers = result;
+                    if (
+                      !resultMembers ||
+                      !resultMembers._embedded.data.members.length
+                    ) {
+                      resolve(null);
+                    }
+                    members = result._embedded.data.members;
+                    matchingMembers = members.filter(
+                      (member) => member.user_id === userId
+                    );
+                    if (matchingMembers && matchingMembers.length) {
+                      matchingMember = matchingMembers[0];
+                      resolve(matchingMember);
+                    }
+                  } catch (error) {
+                    reject(null);
+                  }
+                }
+              }
+            } else {
+              resolve(null);
+            }
+          } else {
+            console.log("No error: ", result);
+            resolve(result);
+          }
+        }
+      );
+    });
+  };
+
+  listMembers = async (conversationId) => {
+    return new Promise((resolve, reject) => {
+      this.nexmo.conversations.members.get(
+        conversationId,
+        {},
         (error, result) => {
           if (error) {
             reject(error);
@@ -167,20 +310,15 @@ class NexmoAPI {
       );
     });
   };
-
-  createMember = (conversationId, userId) => {
+  getNextMembers = async (result) => {
     return new Promise((resolve, reject) => {
-      this.nexmo.conversations.members.create(
-        conversationId,
-        { action: "join", user_id: userId, channel: { type: "app" } },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
+      this.nexmo.conversations.members.next(result, (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
         }
-      );
+      });
     });
   };
 
@@ -199,7 +337,6 @@ class NexmoAPI {
       },
     };
     const privateKEY = fs.readFileSync(PRIVATE_KEY_PATH);
-    console.log("----> userName: ", userName);
     return this.createMyOwnJwt(userName);
     return this.nexmo.generateJwt(privateKEY, {
       application_id: APPLICATION_ID,
