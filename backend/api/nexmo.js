@@ -46,14 +46,27 @@ class NexmoAPI {
         {
           name,
           display_name,
+          // properties: {
+          //   ttl: 60,
+          // },
         },
         (error, result) => {
+          console.log("RESULT: ", result);
           if (error) {
             console.log("error: ", error);
 
             reject(error);
           } else {
-            resolve(result);
+            // TODO: remove as this is for testing purposes only
+            this.nexmo.conversations.get(result.id, (error, result2) => {
+              if (error) {
+                console.error(error);
+              } else {
+                console.log("The result is: ", result2);
+                console.log(result2);
+                resolve(result);
+              }
+            });
           }
         }
       );
@@ -83,11 +96,12 @@ class NexmoAPI {
   getConversationId = async (conversationName) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const conversations = await this.listConversations();
+        const conversations = await this.listAllConversations();
         let id = "";
         // TODO: refactor
         Object.values(conversations).map((conversation) => {
           if (conversation.name === conversationName) {
+            console.log("Conversation object is: ", conversation);
             id = conversation.id;
           }
         });
@@ -98,15 +112,51 @@ class NexmoAPI {
     });
   };
 
-  listConversations = async (name, display_name) => {
+  listConversations = async () => {
     return new Promise((resolve, reject) => {
-      this.nexmo.conversations.get({}, (error, result) => {
+      this.nexmo.conversations.get({ page_size: 10 }, (error, result) => {
         if (error) {
           reject(error);
         } else {
-          resolve(result._embedded.data.conversations);
+          // resolve(result._embedded.data.conversations);
+          resolve(result);
         }
       });
+    });
+  };
+
+  getNextConversations = async (result) => {
+    return new Promise((resolve, reject) => {
+      this.nexmo.conversations.next(result, (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+
+  listAllConversations = async () => {
+    let conversations = [];
+    return new Promise(async (resolve, reject) => {
+      let conversationsResults = await this.listConversations();
+      conversations = conversations.concat(
+        conversationsResults._embedded.data.conversations
+      );
+      while (conversationsResults && conversationsResults._links.next) {
+        try {
+          let result = await this.getNextConversations(conversationsResults);
+          conversationsResults = result;
+          conversations = conversations.concat(
+            conversationsResults._embedded.data.conversations
+          );
+        } catch (error) {
+          conversationsResults = null;
+          reject(error);
+        }
+      }
+      resolve(conversations);
     });
   };
 
@@ -125,7 +175,7 @@ class NexmoAPI {
   removeAllConversations = async (name, display_name) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const conversations = await this.listConversations();
+        const conversations = await this.listAllConversations();
         Object.values(conversations).map(async (conversation) => {
           await this.deleteConversation(conversation.id);
         });

@@ -25,6 +25,7 @@ const Support = () => {
 
         const { conversationId, token, userId } = data;
         let app = await client.login(token);
+        console.log("data: ", data);
         let conversation = await app.getConversation(conversationId);
         console.log("--> conversation: ", conversation);
         // return conversation;

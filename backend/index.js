@@ -16,7 +16,7 @@ const fs = require("fs");
 
 let supportConversationID = "";
 
-const SUPPORT_CONVERATION_NAME = "SupportConversation";
+const SUPPORT_CONVERATION_NAME = "SupportConversation3";
 
 fastify.register(require("fastify-cors"), {
   origin: true,
@@ -69,16 +69,22 @@ const init = async () => {
 
   if (!supportConversationID) {
     try {
+      console.log(
+        "-> Trying to get conversation ID from name: ",
+        SUPPORT_CONVERATION_NAME
+      );
       supportConversationID = await nexmoAPI.getConversationId(
         SUPPORT_CONVERATION_NAME
       );
-      console.log("supportConversationID: ", supportConversationID);
+      console.log("*** supportConversationID: ", supportConversationID);
 
       if (!supportConversationID) {
+        console.log("Creating nexmo app");
         let result = await nexmoAPI.createConversation(
           SUPPORT_CONVERATION_NAME,
           "support conversation"
         );
+        supportConversationID = result.id;
       }
       console.log("---> supportConversationID: ", supportConversationID);
     } catch (error) {
@@ -88,8 +94,9 @@ const init = async () => {
 
   // let result = await nexmoAPI.removeAllConversations();
   // console.log("result: ", result);
-  // result = await nexmoAPI.listConversations();
-  // console.log("result: ", result);
+  result = await nexmoAPI.listAllConversations();
+  // console.log("conversations: ", result);
+  console.log("conversations length: ", result.length);
 };
 
 init();
