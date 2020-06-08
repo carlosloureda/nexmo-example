@@ -140,21 +140,21 @@ class NexmoAPI {
   listAllConversations = async () => {
     let conversations = [];
     return new Promise(async (resolve, reject) => {
-      let conversationsResults = await this.listConversations();
-      conversations = conversations.concat(
-        conversationsResults._embedded.data.conversations
-      );
-      while (conversationsResults && conversationsResults._links.next) {
-        try {
+      try {
+        let conversationsResults = await this.listConversations();
+        conversations = conversations.concat(
+          conversationsResults._embedded.data.conversations
+        );
+        while (conversationsResults && conversationsResults._links.next) {
           let result = await this.getNextConversations(conversationsResults);
           conversationsResults = result;
           conversations = conversations.concat(
             conversationsResults._embedded.data.conversations
           );
-        } catch (error) {
-          conversationsResults = null;
-          reject(error);
         }
+      } catch (error) {
+        conversationsResults = null;
+        reject(error);
       }
       resolve(conversations);
     });
@@ -188,13 +188,36 @@ class NexmoAPI {
 
   listUsers = async () => {
     return new Promise((resolve, reject) => {
-      this.nexmo.users.get({ page_size: 10 }, (error, result) => {
+      this.nexmo.users.get({ page_size: 100 }, (error, result) => {
         if (error) {
           reject(error);
         } else {
           resolve(result);
         }
       });
+    });
+  };
+
+  listAllUsers = async () => {
+    let conversations = [];
+    return new Promise(async (resolve, reject) => {
+      let conversationsResults = await this.listConversations();
+      conversations = conversations.concat(
+        conversationsResults._embedded.data.conversations
+      );
+      while (conversationsResults && conversationsResults._links.next) {
+        try {
+          let result = await this.getNextConversations(conversationsResults);
+          conversationsResults = result;
+          conversations = conversations.concat(
+            conversationsResults._embedded.data.conversations
+          );
+        } catch (error) {
+          conversationsResults = null;
+          reject(error);
+        }
+      }
+      resolve(conversations);
     });
   };
   getNextUsers = async (result) => {
@@ -241,6 +264,68 @@ class NexmoAPI {
   };
 
   // TODO: rename this to a more convenient name
+  // createUser = async (name, display_name, image_url) => {
+  //   return new Promise((resolve, reject) => {
+  //     this.nexmo.users.create(
+  //       { name, display_name, image_url },
+  //       async (error, result) => {
+  //         if (error) {
+  //           if (error.body && error.body.code === NEXMO_ERROS.USER_DUPLICATED) {
+  //             let resultUsers = await this.listUsers();
+  //             let users = resultUsers._embedded.data.users;
+  //             let matchingUsers = users.filter((user) => user.name === name);
+  //             let matchingUser = null;
+  //             if (matchingUsers && !matchingUsers.length) {
+  //               var promises = [];
+  //               matchingUser = matchingUsers[0];
+  //               while (!matchingUser) {
+  //                 console.log("--> matchingUser: ", matchingUser);
+  //                 promises.push(
+  //                   new Promise(async (resolve, reject) => {
+  //                     try {
+  //                       let result = await this.getNextUsers(resultUsers);
+  //                       console.log("result: ", result);
+  //                       resultUsers = result;
+  //                       if (
+  //                         !resultUsers ||
+  //                         !resultUsers._embedded.data.users.length
+  //                       ) {
+  //                         console.log("?????");
+  //                         resolve(null);
+  //                       }
+  //                       users = result._embedded.data.users;
+  //                       matchingUsers = users.filter(
+  //                         (user) => user.name === name
+  //                       );
+  //                       if (matchingUsers && matchingUsers.length) {
+  //                         matchingUser = matchingUsers[0];
+  //                         console.log("****: ", matchingUser);
+  //                         resolve(matchingUser);
+  //                       }
+  //                     } catch (error) {
+  //                       console.log("---> error: ", error);
+  //                       reject(null);
+  //                     }
+  //                   })
+  //                 );
+  //               }
+  //               Promise.all(promises).then(() => {
+  //                 //All operations done
+  //                 console.log("todo hecho ?");
+  //               });
+  //             } else {
+  //               matchingUser = matchingUsers[0];
+  //               resolve(matchingUser);
+  //             }
+  //           } else {
+  //             resolve(result);
+  //           }
+  //         }
+  //       }
+  //     );
+  //   });
+  // };
+
   createUser = async (name, display_name, image_url) => {
     return new Promise((resolve, reject) => {
       this.nexmo.users.create(
@@ -248,36 +333,41 @@ class NexmoAPI {
         async (error, result) => {
           if (error) {
             if (error.body && error.body.code === NEXMO_ERROS.USER_DUPLICATED) {
-              let resultUsers = await this.listUsers();
-              let users = resultUsers._embedded.data.users;
-              let matchingUsers = users.filter((user) => user.name === name);
-              let matchingUser = null;
-              if (matchingUsers && !matchingUsers.length) {
-                var promises = [];
-                matchingUser = matchingUsers[0];
-                while (!matchingUser) {
-                  try {
+              try {
+                let resultUsers = await this.listUsers();
+                let users = resultUsers._embedded.data.users;
+                let matchingUsers = users.filter((user) => user.name === name);
+                let matchingUser = null;
+                if (matchingUsers && !matchingUsers.length) {
+                  var promises = [];
+                  matchingUser = matchingUsers[0];
+
+                  while (!matchingUser) {
                     let result = await this.getNextUsers(resultUsers);
                     resultUsers = result;
                     if (
                       !resultUsers ||
                       !resultUsers._embedded.data.users.length
                     ) {
+                      console.log("?????");
                       resolve(null);
                     }
                     users = result._embedded.data.users;
                     matchingUsers = users.filter((user) => user.name === name);
                     if (matchingUsers && matchingUsers.length) {
                       matchingUser = matchingUsers[0];
+                      console.log("****: ", matchingUser);
                       resolve(matchingUser);
                     }
-                  } catch (error) {
-                    reject(null);
                   }
+                } else {
+                  matchingUser = matchingUsers[0];
+                  console.log("---- ", matchingUser);
+                  resolve(matchingUser);
                 }
-              } else {
-                matchingUser = matchingUsers[0];
-                resolve(matchingUser);
+              } catch (error) {
+                console.log("---> error: ", error);
+                reject(error);
               }
             } else {
               resolve(result);
@@ -310,12 +400,13 @@ class NexmoAPI {
               } else {
                 while (!matchingMember) {
                   try {
-                    let result = await this.getNextUsers(resultMembers);
+                    let result = await this.getNextMembers(resultMembers);
                     resultMembers = result;
                     if (
                       !resultMembers ||
                       !resultMembers._embedded.data.members.length
                     ) {
+                      console.log("--> ?????");
                       resolve(null);
                     }
                     members = result._embedded.data.members;
@@ -327,15 +418,15 @@ class NexmoAPI {
                       resolve(matchingMember);
                     }
                   } catch (error) {
-                    reject(null);
+                    reject(error);
                   }
                 }
               }
             } else {
-              resolve(null);
+              resolve(error);
             }
           } else {
-            console.log("No error: ", result);
+            // console.log("No error: ", result);
             resolve(result);
           }
         }
@@ -356,6 +447,25 @@ class NexmoAPI {
           }
         }
       );
+    });
+  };
+
+  listAllMembers = async (conversationId) => {
+    let members = [];
+    return new Promise(async (resolve, reject) => {
+      let membersResults = await this.listMembers(conversationId);
+      members = members.concat(membersResults._embedded.data.members);
+      while (membersResults && membersResults._links.next) {
+        try {
+          let result = await this.getNextMembers(membersResults);
+          membersResults = result;
+          members = members.concat(membersResults._embedded.data.members);
+        } catch (error) {
+          membersResults = null;
+          reject(error);
+        }
+      }
+      resolve(members);
     });
   };
   getNextMembers = async (result) => {

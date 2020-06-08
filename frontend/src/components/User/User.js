@@ -10,7 +10,7 @@ const User = () => {
 
     async function getToken() {
       try {
-        let response = await fetch(`${SERVER_URL}/support/conversation`, {
+        let response = await fetch(`${SERVER_URL}/wall/conversation`, {
           method: "post",
           headers: {
             "Content-Type": "application/json",
@@ -48,6 +48,7 @@ const User = () => {
   }
 
   const sendNewChatEvent = () => {
+    console.log("eaaaa");
     conversation
       .sendCustomEvent({ type: "my_custom_event", body: { your: "data" } })
       .then((custom_event) => {

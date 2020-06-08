@@ -49,7 +49,9 @@ const Support = () => {
         "--> New event received: from",
         from,
         " event.body: ",
-        event.body
+        event.body,
+        "event: ",
+        event
       );
     });
   }
