@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "dotenv": "^8.2.0",
-    "fastify": "^2.14.1",
+    "fastify": "^2.15.1",
     "fastify-cors": "^3.0.3",
     "jsonwebtoken": "^8.5.1",
     "nexmo": "^2.7.0-beta-1",
